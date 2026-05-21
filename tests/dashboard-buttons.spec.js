@@ -4,11 +4,24 @@ const libraryCard = (page, libraryName) => page.getByTestId(`library-card-${libr
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('button', { name: 'Continue to Dashboard' }).click();
 });
 
 test('loads the dashboard', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'AI Model Benchmark Lab' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Run New Benchmark' })).toBeVisible();
+});
+
+test('shows a splash screen explaining benchmark access requirements', async ({ page }) => {
+  await page.goto('/');
+
+  const splash = page.getByTestId('splash-screen');
+  await expect(splash).toBeVisible();
+  await expect(splash.getByText('How real model testing works')).toBeVisible();
+  await expect(splash.getByText('Mock Test')).toBeVisible();
+  await expect(splash.getByText('Runtime keys required')).toBeVisible();
+  await splash.getByRole('button', { name: 'Continue to Dashboard' }).click();
+  await expect(splash).toBeHidden();
 });
 
 test('View Library opens the selected prompt library modal and Close hides it', async ({

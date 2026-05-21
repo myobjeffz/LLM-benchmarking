@@ -277,6 +277,7 @@ const formatLogTime = () =>
   }).format(new Date());
 
 export default function AIModelBenchmarkDashboard() {
+  const [splashOpen, setSplashOpen] = useState(true);
   const [benchmarkMode, setBenchmarkMode] = useState('mock');
   const [weeklyTrendRows, setWeeklyTrendRows] = useState(initialWeeklyHistory);
   const [libraries, setLibraries] = useState(initialPromptLibraries);
@@ -1088,6 +1089,73 @@ export default function AIModelBenchmarkDashboard() {
           </div>
         </section>
       </div>
+
+      {splashOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm"
+          data-testid="splash-screen"
+        >
+          <div className="w-full max-w-4xl overflow-hidden rounded-3xl border border-blue-500/30 bg-slate-900 shadow-2xl">
+            <div className="border-b border-slate-800 bg-gradient-to-br from-blue-600/20 via-slate-900 to-slate-900 p-6 md:p-8">
+              <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
+                Before You Benchmark
+              </p>
+              <h2 className="mt-3 text-3xl font-bold md:text-5xl">
+                How real model testing works
+              </h2>
+              <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-300 md:text-base">
+                This app can show demo benchmark results immediately, but cloud LLMs
+                cannot be auto-detected without authenticated access. To run real tests
+                against GPT, Claude, Gemini, or Perplexity, the person running the test
+                must provide API keys for that run.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-3 md:p-8">
+              <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5">
+                <p className="text-sm font-semibold text-blue-300">Mock Test</p>
+                <h3 className="mt-2 text-xl font-bold">No keys needed</h3>
+                <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                  Uses built-in sample scores so anyone can explore the dashboard and
+                  understand the benchmark workflow.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5">
+                <p className="text-sm font-semibold text-green-300">Local Test</p>
+                <h3 className="mt-2 text-xl font-bold">Local models only</h3>
+                <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                  Local tools like Ollama can be tested without cloud API keys when
+                  they are running on the user's machine.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5">
+                <p className="text-sm font-semibold text-amber-300">Live Test</p>
+                <h3 className="mt-2 text-xl font-bold">Runtime keys required</h3>
+                <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                  Hosted providers require API keys. Keys are entered at run time, sent
+                  to the benchmark runner, and cleared after the request.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-slate-800 bg-slate-950/60 p-6 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm leading-relaxed text-slate-400">
+                No API keys means no real cloud LLM benchmarking, unless the model is
+                local or the app owner configures shared provider credentials.
+              </p>
+              <button
+                type="button"
+                className="shrink-0 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold transition hover:bg-blue-500"
+                onClick={() => setSplashOpen(false)}
+              >
+                Continue to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {libraryModal && (
         <div

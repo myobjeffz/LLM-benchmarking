@@ -19,7 +19,7 @@ Run the dashboard and live benchmark server together:
 npm run dev:full
 ```
 
-The Vite app runs on `http://127.0.0.1:5173` and proxies `/api` requests to the live runner on `http://127.0.0.1:8787`.
+The Vite app runs on `http://127.0.0.1:3000` and proxies `/api` requests to the live runner on `http://127.0.0.1:8787`.
 
 ## Runtime API Keys
 
