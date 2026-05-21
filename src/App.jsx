@@ -257,11 +257,6 @@ const calculateFullBenchmarkScore = (historyRows) => {
   };
 };
 
-const createTrendRow = (weekNumber) => ({
-  week: `Week ${weekNumber}`,
-  ...Object.fromEntries(models.map((model) => [model.name, averageScore(model.scores)])),
-});
-
 const emptyPromptPack = {
   name: '',
   prompts: '12',
@@ -275,6 +270,22 @@ const formatLogTime = () =>
     minute: '2-digit',
     second: '2-digit',
   }).format(new Date());
+
+const formatBenchmarkRunLabel = () =>
+  new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date());
+
+const createTrendRow = (scores) => ({
+  week: formatBenchmarkRunLabel(),
+  isCurrentRun: true,
+  ...scores,
+});
 
 export default function AIModelBenchmarkDashboard() {
   const [splashOpen, setSplashOpen] = useState(true);
@@ -409,6 +420,19 @@ export default function AIModelBenchmarkDashboard() {
     setLiveCredentials(emptyLiveCredentials);
   };
 
+  const getTrendScoreClass = (row, rowIndex, modelName) => {
+    if (!row.isCurrentRun) {
+      return '';
+    }
+
+    const previousRow = weeklyTrendRows[rowIndex - 1];
+    const didBeatPrevious = previousRow && row[modelName] > previousRow[modelName];
+
+    return didBeatPrevious
+      ? 'font-bold text-amber-300'
+      : 'font-semibold text-green-400';
+  };
+
   const runLiveBenchmark = async (event) => {
     event.preventDefault();
 
@@ -496,15 +520,14 @@ export default function AIModelBenchmarkDashboard() {
       if (liveRunTarget.isFullBenchmark) {
         setWeeklyTrendRows((currentRows) => [
           ...currentRows,
-          {
-            week: `Week ${currentRows.length + 1}`,
-            ...Object.fromEntries(
+          createTrendRow(
+            Object.fromEntries(
               models.map((model) => {
                 const result = payload.results.find((item) => item.model === model.name);
                 return [model.name, result?.score ?? averageScore(model.scores)];
               }),
             ),
-          },
+          ),
         ]);
       }
     } catch (error) {
@@ -574,7 +597,11 @@ export default function AIModelBenchmarkDashboard() {
       onComplete: () => {
         setWeeklyTrendRows((currentRows) => [
           ...currentRows,
-          createTrendRow(currentRows.length + 1),
+          createTrendRow(
+            Object.fromEntries(
+              models.map((model) => [model.name, averageScore(model.scores)]),
+            ),
+          ),
         ]);
       },
     });
@@ -618,6 +645,104 @@ export default function AIModelBenchmarkDashboard() {
     setNewPromptPack(emptyPromptPack);
     setAddPackModalOpen(false);
   };
+
+  const benchmarkLogsSection = (
+    <section
+      className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-xl"
+      data-testid="benchmark-log-window"
+    >
+      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Benchmark Logs</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Live background progress for the current benchmark run.
+          </p>
+        </div>
+
+        <span
+          className={`rounded-full px-3 py-1 text-sm font-semibold ${
+            isBenchmarkRunning
+              ? 'bg-green-500/10 text-green-300'
+              : 'bg-slate-800 text-slate-300'
+          }`}
+        >
+          {isBenchmarkRunning ? 'Running' : 'Idle'}
+        </span>
+      </div>
+
+      <div className="mb-4">
+        <div className="mb-2 flex items-center justify-between text-sm text-slate-400">
+          <span>Progress</span>
+          <span>{runProgress}%</span>
+        </div>
+        <div className="h-3 overflow-hidden rounded-full bg-slate-800">
+          <div
+            className="h-full rounded-full bg-green-500 transition-all duration-500"
+            style={{ width: `${runProgress}%` }}
+          />
+        </div>
+      </div>
+
+      {runResult?.scoreDetails && (
+        <div
+          className="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 md:grid-cols-3"
+          data-testid="score-calculation"
+        >
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Score Formula
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300 md:col-span-2">
+              {runResult.scoreDetails.formula}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Previous Score
+            </p>
+            <p className="mt-2 text-3xl font-bold text-slate-300">
+              {runResult.scoreDetails.baselineScore}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-wide text-green-400">
+              Updated Score
+            </p>
+            <p className="mt-2 text-4xl font-bold text-blue-400">
+              {runResult.scoreDetails.updatedScore}
+            </p>
+          </div>
+
+          {runResult.scoreDetails.metricAverages && (
+            <div className="md:col-span-3">
+              <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+                Metric Averages
+              </p>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                {runResult.scoreDetails.metricAverages.map(({ metric, score }) => (
+                  <div key={metric} className="rounded-xl bg-slate-800 p-3">
+                    <p className="text-xs capitalize text-slate-400">{metric}</p>
+                    <p className="mt-1 text-xl font-bold text-slate-100">{score}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950 p-4 font-mono text-sm">
+        {testLogs.map((log) => (
+          <div key={log.id} className="flex gap-3 text-slate-300">
+            <span className="shrink-0 text-slate-500">[{log.time}]</span>
+            <span>{log.message}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 text-white">
@@ -728,6 +853,8 @@ export default function AIModelBenchmarkDashboard() {
           ))}
         </section>
 
+        {benchmarkLogsSection}
+
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-xl lg:col-span-2">
             <div className="mb-6">
@@ -741,7 +868,7 @@ export default function AIModelBenchmarkDashboard() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-slate-800 text-sm text-slate-400">
-                    <th className="py-3">Week</th>
+                    <th className="py-3">Run Date</th>
                     <th>GPT</th>
                     <th>Claude</th>
                     <th>Gemini</th>
@@ -750,17 +877,21 @@ export default function AIModelBenchmarkDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {weeklyTrendRows.map((week) => (
+                  {weeklyTrendRows.map((week, rowIndex) => (
                     <tr
                       key={week.week}
                       className="border-b border-slate-800 transition hover:bg-slate-800/30"
                     >
                       <td className="py-4 font-medium">{week.week}</td>
-                      <td>{week.GPT}</td>
-                      <td>{week.Claude}</td>
-                      <td>{week.Gemini}</td>
-                      <td>{week.Llama}</td>
-                      <td>{week.Perplexity}</td>
+                      {models.map((model) => (
+                        <td
+                          key={model.name}
+                          className={getTrendScoreClass(week, rowIndex, model.name)}
+                          data-testid={`trend-score-${rowIndex}-${model.name}`}
+                        >
+                          {week[model.name]}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -952,102 +1083,6 @@ export default function AIModelBenchmarkDashboard() {
                 Click `Run Tests` on any prompt library to queue a benchmark run.
               </p>
             )}
-          </div>
-        </section>
-
-        <section
-          className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-xl"
-          data-testid="benchmark-log-window"
-        >
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Benchmark Logs</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Live background progress for the current benchmark run.
-              </p>
-            </div>
-
-            <span
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                isBenchmarkRunning
-                  ? 'bg-green-500/10 text-green-300'
-                  : 'bg-slate-800 text-slate-300'
-              }`}
-            >
-              {isBenchmarkRunning ? 'Running' : 'Idle'}
-            </span>
-          </div>
-
-          <div className="mb-4">
-            <div className="mb-2 flex items-center justify-between text-sm text-slate-400">
-              <span>Progress</span>
-              <span>{runProgress}%</span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-slate-800">
-              <div
-                className="h-full rounded-full bg-green-500 transition-all duration-500"
-                style={{ width: `${runProgress}%` }}
-              />
-            </div>
-          </div>
-
-          {runResult?.scoreDetails && (
-            <div
-              className="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-slate-800 bg-slate-950 p-4 md:grid-cols-3"
-              data-testid="score-calculation"
-            >
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">
-                  Score Formula
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300 md:col-span-2">
-                  {runResult.scoreDetails.formula}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">
-                  Previous Score
-                </p>
-                <p className="mt-2 text-3xl font-bold text-slate-300">
-                  {runResult.scoreDetails.baselineScore}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs uppercase tracking-wide text-green-400">
-                  Updated Score
-                </p>
-                <p className="mt-2 text-4xl font-bold text-blue-400">
-                  {runResult.scoreDetails.updatedScore}
-                </p>
-              </div>
-
-              {runResult.scoreDetails.metricAverages && (
-                <div className="md:col-span-3">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">
-                    Metric Averages
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                    {runResult.scoreDetails.metricAverages.map(({ metric, score }) => (
-                      <div key={metric} className="rounded-xl bg-slate-800 p-3">
-                        <p className="text-xs capitalize text-slate-400">{metric}</p>
-                        <p className="mt-1 text-xl font-bold text-slate-100">{score}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="max-h-72 space-y-2 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950 p-4 font-mono text-sm">
-            {testLogs.map((log) => (
-              <div key={log.id} className="flex gap-3 text-slate-300">
-                <span className="shrink-0 text-slate-500">[{log.time}]</span>
-                <span>{log.message}</span>
-              </div>
-            ))}
           </div>
         </section>
 

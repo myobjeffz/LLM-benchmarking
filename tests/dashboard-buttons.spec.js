@@ -117,7 +117,12 @@ test('Run New Benchmark scores every model across every metric', async ({ page }
   await expect(
     logs.getByText('Benchmark complete for Full Model Benchmark. Results are ready in Test Run Status.'),
   ).toBeVisible({ timeout: 5000 });
-  await expect(page.getByRole('cell', { name: 'Week 5' })).toBeVisible();
+  const latestTrendRow = page.locator('tbody tr').last();
+  await expect(latestTrendRow.locator('td').first()).toContainText(
+    /[A-Z][a-z]{2} \d{2}, \d{4}/,
+  );
+  await expect(page.getByTestId('trend-score-4-GPT')).toHaveClass(/text-green-400/);
+  await expect(page.getByTestId('trend-score-4-Llama')).toHaveClass(/text-amber-300/);
 
   await modal.getByRole('button', { name: 'Close' }).click();
   await expect(modal).toBeHidden();
